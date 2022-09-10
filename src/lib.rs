@@ -52,17 +52,21 @@ impl Dag {
         }
     }
 
+    pub fn remove(&mut self, key: &str) -> bool {
+        self.nodes.remove(key).is_some()
+    }
+
     pub fn add_edge(&mut self, to_node_key: &str, from_node_key: &str) {
-        let to_node = self.get(to_node_key).unwrap();
-        let from_node = self.get(from_node_key).unwrap();
+        let to_node = self.get(to_node_key).expect("Cannot find node to add edge to");
+        let from_node = self.get(from_node_key).expect("Cannot find node to add edge from");
         to_node.borrow_mut().add_edge(from_node, 1);
     }
 
     pub fn get_edge_weight(&self, to_node_key: &str, from_node_key: &str) -> i32 {
-        let from_node = self.get(from_node_key).unwrap();
+        let from_node = self.get(from_node_key).expect(&format!("Cannot find node ${}", from_node_key));
         let borrowed_from_node = from_node.borrow();
         let edge = borrowed_from_node.edges.iter().find(|edge| 
-            edge.to_node.upgrade().unwrap().borrow().key == to_node_key
+            edge.to_node.upgrade().expect("Failed to find edge reference").borrow().key == to_node_key
         );
         match edge {
             Some(found) => found.weight,
@@ -83,7 +87,7 @@ impl Dag {
             validated.insert(borrowed_node.key.clone());
             f(node.clone());
             for edge in borrowed_node.edges.iter() {
-                self.traverse(edge.to_node.upgrade().unwrap(), validated, f);
+                self.traverse(edge.to_node.upgrade().expect("Failed to find edge reference"), validated, f);
             }
         }
     }
@@ -100,6 +104,7 @@ impl Dag {
                 None => (),
             }
         }
+        self.invalidated.clear();
     }
 }
 
