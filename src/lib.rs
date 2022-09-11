@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::cell::RefCell;
 use std::rc::{Rc, Weak};
-use std::fmt::{Debug};
+use std::fmt::Debug;
 
 type NodeData = dyn Debug + 'static;
 
@@ -65,7 +65,7 @@ impl Dag {
     pub fn get_edge_weight(&self, to_node_key: &str, from_node_key: &str) -> i32 {
         let from_node = self.get(from_node_key).expect(&format!("Cannot find node ${}", from_node_key));
         let borrowed_from_node = from_node.borrow();
-        let edge = borrowed_from_node.edges.iter().find(|edge| 
+        let edge = borrowed_from_node.edges.iter().find(|edge|
             edge.to_node.upgrade().expect("Failed to find edge reference").borrow().key == to_node_key
         );
         match edge {
@@ -81,25 +81,25 @@ impl Dag {
         }
     }
 
-    pub fn traverse(&self, node: NodeStrongRef, validated: &mut HashSet<String>, f: fn(NodeStrongRef) -> ()) {
+    pub fn traverse(&self, node: NodeStrongRef, validated: &mut HashSet<String>, callback: fn(NodeStrongRef) -> ()) {
         let borrowed_node = node.borrow();
         if !validated.contains(&borrowed_node.key) {
             validated.insert(borrowed_node.key.clone());
-            f(node.clone());
+            callback(node.clone());
             for edge in borrowed_node.edges.iter() {
-                self.traverse(edge.to_node.upgrade().expect("Failed to find edge reference"), validated, f);
+                self.traverse(edge.to_node.upgrade().expect("Failed to find edge reference"), validated, callback);
             }
         }
     }
 
-    pub fn dispatch(&mut self, f: fn(NodeStrongRef) -> ()) {
+    pub fn dispatch(&mut self, callback: fn(NodeStrongRef) -> ()) {
         println!("Dispatching...");
         for key in self.invalidated.iter() {
             let node = self.get(&key);
             match node {
                 Some(found) => {
                     let mut validated: HashSet<String> = HashSet::new();
-                    self.traverse(found, &mut validated, f)
+                    self.traverse(found, &mut validated, callback)
                 },
                 None => (),
             }
@@ -131,8 +131,19 @@ mod tests {
     use super::*;
 
     #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
+    fn node_added_to_dag() {
+        let key1 = "A1";
+        let mut dag = Dag::new();
+        dag.add(key1, "foo");
+        assert_eq!(dag.get(key1).is_some(), true);
+    }
+
+    #[test]
+    fn node_removed_from_dag() {
+        let key1 = "A1";
+        let mut dag = Dag::new();
+        dag.add(key1, "foo");
+        dag.remove(key1);
+        assert_eq!(dag.get(key1).is_none(), true);
     }
 }
